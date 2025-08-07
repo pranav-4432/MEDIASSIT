@@ -10,7 +10,7 @@ import pickle
 app = Flask(__name__)
 
 # Load YOLO model
-model = YOLO("models\OCR\BrainTumorMRI.pt")
+model = YOLO(r"models\OCR\BrainTumorMRI.pt")
 
 # Set upload folder and allowed extensions
 UPLOAD_FOLDER = 'uploads'
@@ -77,7 +77,7 @@ def upload_image():
     
     return render_template('ocr.html')
 
-model = YOLO("models\OCR\BrainTumorMRI.pt")
+model = YOLO(r"models\OCR\BrainTumorMRI.pt")
 
 with open("pickle/brain_tumor.pkl", "wb") as f:
     pickle.dump(model, f)

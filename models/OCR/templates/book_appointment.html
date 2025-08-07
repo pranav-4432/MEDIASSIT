@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <title>Book Appointment</title>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width" />
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/book_appointment.css') }}">
+    <script src="{{ url_for('static', filename='js/book_appointment.js') }}"></script>
+  </head>
+  <body>
+    <nav>
+      <a href="/">Home</a>
+      <a href="/page2.html" aria-current="page">Book Appointment</a>
+    </nav>
+    <main>
+      <div class="booking-container">
+        <h1>Book an Appointment</h1>
+        <form id="appointmentForm1" action="/add_appointment" method="POST"  class="booking-form">
+          <div class="form-group">
+            <label for="name">Full Name:</label>
+            <input type="text" id="name" name="name" required>
+          </div>
+          
+          <div class="form-group">
+            <label for="age">Age:</label>
+            <input type="number" id="age" name="age" min="0" max="119" required>
+          </div>
+          
+          <div class="form-group">
+            <label for="doctorname">Doctor Name:</label>
+            <input type="text" id="doctorname" name="doctorname" required>
+          </div>
+          
+          <div class="form-group">
+            <label for="appointmentTime">Appointment Time:</label>
+            <input type="time" id="appointmentTime" name="appointmentTime" required>
+          </div>
+          
+          <div class="form-group">
+            <label for="description">Description of Issue:</label>
+            <textarea id="description" name="description" rows="5" required></textarea>
+          </div>
+          
+          <button type="submit"  class="submit-btn1">Book Appointment</button>
+        </form>
+      </div>
+    </main>
+  </body>
+</html>

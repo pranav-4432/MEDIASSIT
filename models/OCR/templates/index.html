@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Health App</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+  </head>
+  <body>
+    <nav class="navbar">
+      <a href="/" class="navbar-brand">MedAssist</a>
+      <a href="{{ url_for('login') }}" class="login-btn">Login</a>
+    </nav>
+
+    <main class="main-content">
+      <div class="services-grid">
+        <div class="service-card  ">
+          <div class="service-icon">
+            <i class="fas fa-user-md"></i>
+          </div>
+          <h2 class="service-title">Find a Doctor</h2>
+          <p class="service-description">Search for qualified healthcare professionals in your area. Book appointments with specialists.</p>
+          <a href="/search_doctor" class="login-btn">Search Doctors</a>
+        </div>
+
+       
+
+        <div class="service-card">
+          <div class="service-icon">
+            <i class="fas fa-calendar-check"></i>
+          </div>
+          <h2 class="service-title">Book Appointments</h2>
+          <p class="service-description">Schedule medical appointments quickly and easily with our online booking system.</p>
+          <a href="/book_appointment" class="login-btn">Book Now</a>
+        </div>
+      </div>
+      <div class="gif-container">
+        <img src="{{ url_for('static', filename='images/home_gif.gif') }}" alt="GIF">
+
+
+
+      </div>
+      <!-- <button class="open-button" onclick="openForm()">Chat</button> -->
+
+    <!-- <div class="chat-popup" id="myForm">
+        <form class="form-container" onsubmit="sendMessage(event)">
+            <i class="fa-solid fa-chalkboard-user"></i> <h3>Chat with us</h3>
+            <div id="messages"></div>
+            <textarea id="message" placeholder="Type message.." required></textarea>
+            <button type="submit" class="btn">Send</button>
+            <button type="button" class="btn cancel" onclick="closeForm()">Close</button>
+        </form>
+    </div> -->
+
+    </main>
+
+    <script src="{{ url_for('static', filename='js/script.js') }}"></script>
+  </body>
+</html>

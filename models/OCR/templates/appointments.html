@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Book Appointments - Health App</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/appointments.css') }}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+</head>
+<body>
+    <nav class="navbar">
+        <a href="{{ url_for('index') }}" class="navbar-brand">MedAssist</a>
+        <a href="{{ url_for('login') }}" class="login-btn">Login</a>
+    </nav>
+
+    <main class="main-content">
+        <h1>Available Doctors</h1>
+        
+        <div class="doctors-grid">
+            <div class="doctor-card">
+                <div class="doctor-image">
+                    <i class="fas fa-user-md"></i>
+                </div>
+                <div class="doctor-info">
+                    <h2>Dr. Sarah Johnson</h2>
+                    <p class="specialization">Cardiologist</p>
+                    <div class="qualifications">
+                        <p>MBBS, MD (Cardiology)</p>
+                        <p>15 years experience</p>
+                    </div>
+                    <a href="D:\Github\Techathon-Error404\templates\book_appointment.html" class="book-btn">Book Appointment</a>
+                </div>
+            </div>
+
+            <div class="doctor-card">
+                <div class="doctor-image">
+                    <i class="fas fa-user-md"></i>
+                </div>
+                <div class="doctor-info">
+                    <h2>Dr. Michael Chen</h2>
+                    <p class="specialization">Pediatrician</p>
+                    <div class="qualifications">
+                        <p>MBBS, MD (Pediatrics)</p>
+                        <p>12 years experience</p>
+                    </div>
+                    <a href="D:\Github\Techathon-Error404\templates\book_appointment.html" class="book-btn">Book Appointment</a>
+                </div>
+            </div>
+
+            <div class="doctor-card">
+                <div class="doctor-image">
+                    <i class="fas fa-user-md"></i>
+                </div>
+                <div class="doctor-info">
+                    <h2>Dr. Emily Rodriguez</h2>
+                    <p class="specialization">Dermatologist</p>
+                    <div class="qualifications">
+                        <p>MBBS, MD (Dermatology)</p>
+                        <p>10 years experience</p>
+                    </div>
+                    <a href="D:\Github\Techathon-Error404\templates\book_appointment.html" class="book-btn">Book Appointment</a>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script src="{{ url_for('static', filename='js/appointments.js') }}"></script>
+</body>
+</html>

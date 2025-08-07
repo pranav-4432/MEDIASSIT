@@ -1,0 +1,367 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Health Prediction System</title>
+    <link rel="stylesheet" href="../static/css/health_pred.css">
+</head>
+
+<body>
+    <header>
+        <h1>Health Prediction System</h1>
+        <nav>
+            <button id="specific-disease-btn" class="nav-btn active" hidden>Specific Disease Assessment</button>
+            <button id="general-health-btn" class="nav-btn" hidden>General Health Assessment</button>
+        </nav>
+    </header>
+
+    <main>
+        <section id="specific-disease-section">
+            <section class="disease-selection">
+                <h2>Select Disease Type</h2>
+                <div class="disease-grid">
+                    <div class="disease-card" data-disease="diabetes">
+                        <div class="icon">🩺</div>
+                        <h3>Diabetes</h3>
+                        <p>Analyze blood sugar levels and related health indicators</p>
+                    </div>
+                    <a href="http://127.0.0.1:3000/">
+                        <div class="disease-card" data-disease="fracture">
+                            <div class="icon">🦴</div>
+                            <h3>Bone Fracture</h3>
+                            <p>Analyze X-ray images for bone fracture detection</p>
+                        </div>
+                    </a>
+                    <div class="disease-card" data-disease="cancer">
+                        <div class="icon">🔬</div>
+                        <h3>Breast Cancer</h3>
+                        <p>Analyze cancer risk factors and symptoms</p>
+                    </div>
+                    <a href="http://127.0.0.1:4000/">
+                        <div class="disease-card" data-disease="brain-tumor">
+                            <div class="icon">🧠</div>
+                            <h3>Brain Tumor</h3>
+                            <p>Analyze MRI scans for brain tumor detection</p>
+                        </div>
+                    </a>
+                </div>
+            </section>
+
+            <section id="input-forms" class="input-section hidden">
+                <!-- Diabetes Form -->
+                <form id="diabetes-form" class="disease-form hidden">
+                    <h2>Diabetes Assessment</h2>
+                    <div class="assessment-methods">
+                        <div class="single-input-method">
+                            <h3>Quick Assessment</h3>
+                            <div class="form-grid">
+                                <div class="form-group">
+                                    <label>Gender</label>
+                                    <div class="radio-group">
+                                        <label>
+                                            <input type="radio" name="gender" value="Male" required> Male
+                                        </label>
+                                        <label>
+                                            <input type="radio" name="gender" value="Female" required> Female
+                                        </label>
+                                    </div>
+                                </div>
+                                <div class="form-group">
+                                    <label for="age">Age</label>
+                                    <input type="number" id="age" name="age" required>
+                                </div>
+                                <div class="form-group">
+                                    <label>Hypertension</label>
+                                    <div class="radio-group">
+                                        <label>
+                                            <input type="radio" name="hypertension" value="1" required> Yes
+                                        </label>
+                                        <label>
+                                            <input type="radio" name="hypertension" value="0" required> No
+                                        </label>
+                                    </div>
+                                </div>
+                                <div class="form-group">
+                                    <label>Heart Disease</label>
+                                    <div class="radio-group">
+                                        <label>
+                                            <input type="radio" name="heart_disease" value="1" required> Yes
+                                        </label>
+                                        <label>
+                                            <input type="radio" name="heart_disease" value="0" required> No
+                                        </label>
+                                    </div>
+                                </div>
+                                <div class="form-group">
+                                    <label>Smoking History</label>
+                                    <div class="radio-group">
+                                        <label>
+                                            <input type="radio" name="smoking_history" value="never" required> Never
+                                        </label>
+                                        <label>
+                                            <input type="radio" name="smoking_history" value="former" required> Former
+                                        </label>
+                                        <label>
+                                            <input type="radio" name="smoking_history" value="current" required> Current
+                                        </label>
+                                    </div>
+                                </div>
+                                <div class="form-group">
+                                    <label for="bmi">BMI</label>
+                                    <input type="number" id="bmi" name="bmi" step="0.1" required>
+                                </div>
+                                <div class="form-group">
+                                    <label for="hba1c">HbA1c Level</label>
+                                    <input type="number" id="hba1c" name="hba1c" step="0.1" required>
+                                </div>
+                                <div class="form-group">
+                                    <label for="glucose">Glucose Level (mg/dL)</label>
+                                    <input type="number" id="glucose" name="glucose" required>
+                                </div>
+                            </div>
+                            <button type="submit" class="submit-btn">Predict</button>
+                        </div>
+                    </div>
+                </form>
+
+                <!-- Fracture Form -->
+                <form id="fracture-form" class="disease-form hidden" hidden>
+                    <h2>Bone Fracture Detection</h2>
+                    <div class="file-upload-method full-width">
+                        <h3>X-ray Image Analysis</h3>
+                        <div class="file-upload-container">
+                            <input type="file" id="fracture-file" name="fracture-file" accept=".jpg,.jpeg,.png"
+                                class="file-input">
+                            <label for="fracture-file" class="file-label">
+                                <span class="file-icon">🖼️</span>
+                                <span>Upload X-ray Image</span>
+                            </label>
+                            <p class="file-info">No file chosen</p>
+                        </div>
+                        <div id="fracture-preview" class="image-preview hidden">
+                            <img src="" alt="X-ray preview" id="fracture-preview-image">
+                        </div>
+                        <button type="submit" class="submit-btn">Analyze Image</button>
+                    </div>
+                </form>
+
+                <!-- Cancer Form -->
+                <form id="cancer-form" class="disease-form hidden">
+                    <h2>Cancer Risk Assessment</h2>
+                    <div class="assessment-methods">
+                        <div class="single-input-method">
+                            <h3>Quick Assessment</h3>
+                            <div class="form-grid">
+                                <div class="form-group">
+                                    <label for="clump-thickness">Clump Thickness</label>
+                                    <input type="number" id="clump-thickness" name="clump-thickness" min="1" max="10"
+                                        required>
+                                </div>
+                                <div class="form-group">
+                                    <label for="uniformity-cell-size">Uniformity of Cell Size</label>
+                                    <input type="number" id="uniformity-cell-size" name="uniformity-cell-size" min="1"
+                                        max="10" required>
+                                </div>
+                                <div class="form-group">
+                                    <label for="uniformity-cell-shape">Uniformity of Cell Shape</label>
+                                    <input type="number" id="uniformity-cell-shape" name="uniformity-cell-shape" min="1"
+                                        max="10" required>
+                                </div>
+                                <div class="form-group">
+                                    <label for="marginal-adhesion">Marginal Adhesion</label>
+                                    <input type="number" id="marginal-adhesion" name="marginal-adhesion" min="1"
+                                        max="10" required>
+                                </div>
+                                <div class="form-group">
+                                    <label for="epithelial-cell-size">Single Epithelial Cell Size</label>
+                                    <input type="number" id="epithelial-cell-size" name="epithelial-cell-size" min="1"
+                                        max="10" required>
+                                </div>
+                                <div class="form-group">
+                                    <label for="bare-nuclei">Bare Nuclei</label>
+                                    <input type="number" id="bare-nuclei" name="bare-nuclei" min="1" max="10" required>
+                                </div>
+                                <div class="form-group">
+                                    <label for="bland-chromatin">Bland Chromatin</label>
+                                    <input type="number" id="bland-chromatin" name="bland-chromatin" min="1" max="10"
+                                        required>
+                                </div>
+                                <div class="form-group">
+                                    <label for="normal-nucleoli">Normal Nucleoli</label>
+                                    <input type="number" id="normal-nucleoli" name="normal-nucleoli" min="1" max="10"
+                                        required>
+                                </div>
+                                <div class="form-group">
+                                    <label for="mitoses">Mitoses</label>
+                                    <input type="number" id="mitoses" name="mitoses" min="1" max="10" required>
+                                </div>
+                            </div>
+                            <button type="submit" class="submit-btn">Predict</button>
+                        </div>
+                    </div>
+                </form>
+
+                <!-- Brain Tumor Form -->
+                <form id="brain-tumor-form" class="disease-form hidden" hidden>
+                    <h2>Brain Tumor Detection</h2>
+                    <div class="file-upload-method full-width">
+                        <h3>MRI Scan Analysis</h3>
+                        <div class="file-upload-container">
+                            <input type="file" id="brain-tumor-file" name="brain-tumor-file" accept=".jpg,.jpeg,.png"
+                                class="file-input">
+                            <label for="brain-tumor-file" class="file-label">
+                                <span class="file-icon">🖼️</span>
+                                <span>Upload MRI Scan Image</span>
+                                <p class="upload-description">
+                                    Please upload a clear MRI scan image. For accurate results:
+                                <ul>
+                                    <li>Image should be well-lit and focused</li>
+                                    <li>Ensure the scan is recent</li>
+                                    <li>Avoid compressed or low-quality images</li>
+                                </ul>
+                                </p>
+                            </label>
+                            <p class="file-info">No file chosen</p>
+                        </div>
+                        <div id="brain-tumor-preview" class="image-preview hidden">
+                            <img src="" alt="MRI scan preview" id="brain-tumor-preview-image">
+                        </div>
+
+                        <button type="submit" class="submit-btn">Analyze Scan</button>
+                    </div>
+                </form>
+            </section>
+
+            <!-- Output Sections -->
+            <section id="output-sections">
+                <!-- Heart Disease Output -->
+                <div id="heart-output" class="output-section hidden">
+                    <h2>Heart Disease Assessment Results</h2>
+                    <div class="prediction-result">
+                        <div class="result-indicator"></div>
+                        <p class="prediction-text"></p>
+                        <div class="confidence-score"></div>
+                        <div class="risk-factors"></div>
+                    </div>
+                </div>
+
+                <!-- Diabetes Output -->
+                <div id="diabetes-output" class="output-section hidden">
+                    <h2>Diabetes Assessment Results</h2>
+                    <div class="prediction-result">
+                        <div class="result-indicator"></div>
+                        <p class="prediction-text"></p>
+                        <div class="confidence-score"></div>
+                        <div class="risk-factors"></div>
+                    </div>
+                </div>
+
+                <!-- Cancer Output -->
+                <div id="cancer-output" class="output-section hidden">
+                    <h2>Cancer Risk Assessment Results</h2>
+                    <div class="prediction-result">
+                        <div class="result-indicator"></div>
+                        <p class="prediction-text"></p>
+                        <div class="confidence-score"></div>
+                        <div class="risk-factors"></div>
+                    </div>
+                </div>
+
+                <!-- Fracture Output -->
+                <div id="fracture-output" class="output-section hidden">
+                    <h2>Bone Fracture Detection Results</h2>
+                    <div class="prediction-result">
+                        <div class="result-indicator"></div>
+                        <p class="prediction-text"></p>
+                        <div class="confidence-score"></div>
+                        <div class="detection-details"></div>
+                    </div>
+                </div>
+
+                <!-- Brain Tumor Output -->
+                <div id="brain-tumor-output" class="output-section hidden">
+                    <h2>Brain Tumor Detection Results</h2>
+                    <div class="prediction-result">
+                        <div class="result-indicator"></div>
+                        <p class="prediction-text"></p>
+                        <div class="confidence-score"></div>
+                        <div class="detection-details"></div>
+                    </div>
+                </div>
+            </section>
+        </section>
+    </main>
+
+    <script src="../static/js/health_pred.js"></script>
+    <script>
+        document.addEventListener("DOMContentLoaded", function () {
+            document.getElementById("heart-form").addEventListener("submit", function (e) {
+                e.preventDefault();
+                const data = {
+                    age: document.getElementById("age").value,
+                    gender: document.querySelector('input[name="gender"]:checked').value,
+                    "cp-level": document.getElementById("cp-level").value,
+                    "threst-bps-level": document.getElementById("threst-bps-level").value,
+                    cholesterol: document.getElementById("cholesterol").value,
+                    fbs: document.getElementById("fbs").value
+                };
+
+                fetch("/predict_heart", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify(data)
+                })
+                    .then(response => response.json())
+                    .then(result => alert("Heart Disease Prediction: " + (result.prediction ? "Positive" : "Negative")))
+                    .catch(error => console.error("Error:", error));
+            });
+
+            document.getElementById("diabetes-form").addEventListener("submit", function (e) {
+                e.preventDefault();
+                const data = {
+                    gender: document.querySelector('input[name="gender"]:checked').value,
+                    age: document.getElementById("age").value,
+                    hypertension: document.querySelector('input[name="hypertension"]:checked').value,
+                    heart_disease: document.querySelector('input[name="heart_disease"]:checked').value,
+                    smoking_history: document.querySelector('input[name="smoking_history"]:checked').value,
+                    bmi: document.getElementById("bmi").value,
+                    hba1c: document.getElementById("hba1c").value,
+                    glucose: document.getElementById("glucose").value
+                };
+
+                fetch("/predict_diabetes", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify(data)
+                })
+                    .then(response => response.json())
+                    .then(result => alert("Diabetes Prediction: " + (result.prediction ? "Positive" : "Negative")))
+                    .catch(error => console.error("Error:", error));
+            });
+
+            document.getElementById("cancer-form").addEventListener("submit", function (e) {
+                e.preventDefault();
+                const data = {};
+                document.querySelectorAll("#cancer-form input").forEach(input => {
+                    data[input.name] = input.value;
+                });
+
+                fetch("/predict_cancer", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify(data)
+                })
+                    .then(response => response.json())
+                    .then(result => alert("Cancer Prediction: " + (result.prediction ? "Positive" : "Negative")))
+                    .catch(error => console.error("Error:", error));
+            });
+        });
+
+
+
+    </script>
+</body>
+
+</html>

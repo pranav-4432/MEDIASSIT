@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard - MedAssist</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+</head>
+
+<body>
+    <nav class="navbar">
+        <a href="{{ url_for('index') }}" class="navbar-brand">MedAssist</a>
+        <form action="/search" method="post">
+            <div class="search-container">
+                <label for="search_query"></label>
+                <input type="text" placeholder="Search..." id="search_query" name="search_query" class="search-bar">
+                <i class="fas fa-search search-icon"></i>
+                <button type="submit" hidden></button>
+            </div>
+        </form>
+        <div class="nav-right">
+            <a href="{{ url_for('health_pred') }}" class="nav-link">Medical Prediction</a>
+            <div class="profile">
+                <img src="https://ui-avatars.com/api/?name=John+Doe" alt="Profile" class="profile-img">
+            </div>
+        </div>
+    </nav>
+
+    <main class="main-content">
+        <div class="user-info">
+            <h1>Welcome, {{doc_name}}</h1>
+            <p class="qualification">MBBS, MD (Cardiology)</p>
+        </div>
+
+        <div class="dashboard-grid">
+            <div class="dashboard-card ocr-card">
+                <div class="card-icon">
+                    <i class="fas fa-file-medical"></i>
+                </div>
+                <h2>OCR Scanner</h2>
+                <p>Scan and analyze medical documents</p>
+                <a href="/ocr" class="card-btn">Open Scanner</a>
+            </div>
+
+            <div class="dashboard-card appointments-card">
+                <div class="card-icon">
+                    <i class="fas fa-calendar-check"></i>
+                </div>
+                <!-- <h2>Upcoming Appointments</h2> -->
+                <div class="appointment-list" id="appointmentBox">
+                    <p>Loading appointments...</p>
+                </div>
+            </div>
+
+            <div class="dashboard-card alerts-card">
+                <div class="card-icon">
+                    <i class="fas fa-bell"></i>
+                </div>
+                <!-- <h2>Alerts</h2> -->
+                <div class="alert-list" id="alertBox">
+                    <p>Loading alerts...</p>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        async function fetchAppointments() {
+            try {
+                const response = await fetch('/api/upcoming_appointments');
+                const data = await response.json();
+
+                const appointmentBox = document.getElementById('appointmentBox');
+
+                if (data.appointments && data.appointments.length > 0) {
+                    appointmentBox.innerHTML = `<h2>Upcoming Appointments</h2>` +
+                        data.appointments.map(app =>
+                            `<p>${app.appointment_time} - ${app.patient_name} (${app.disease})</p>`
+                        ).join('');
+                } else {
+                    appointmentBox.innerHTML = '<h2>Upcoming Appointments</h2><p>No upcoming appointments</p>';
+                }
+            } catch (error) {
+                console.error("Error fetching appointments:", error);
+                document.getElementById('appointmentBox').innerHTML = '<h2>Upcoming Appointments</h2><p>Failed to load data</p>';
+            }
+        }
+
+
+        // Fetch patient alerts
+        async function fetchPatientAlerts() {
+            try {
+                const response = await fetch('/api/patient_alerts');
+                const data = await response.json();
+                const alertBox = document.getElementById('alertBox');
+
+                if (data.Patients && data.Patients.length > 0) {
+                    const alerts = data.Patients.slice(0, 5) // Limit to 5 alerts
+                        .map(patient => `<p>${patient.Name} - ${patient.Alert}</p>`)
+                        .join('');
+
+                    alertBox.innerHTML = `<h2>Emergency Alerts</h2>${alerts}`;
+                } else {
+                    alertBox.innerHTML = `<h2><i class="fas fa-exclamation-triangle alert-icon"></i>Emergency Alerts</h2><p>No critical alerts</p>`;
+                }
+            } catch (error) {
+                console.error("Error fetching patient alerts:", error);
+                document.getElementById('alertBox').innerHTML = '<h2><i class="fas fa-exclamation-triangle alert-icon"></i>Emergency Alerts</h2><p>Failed to load data</p>';
+            }
+        }
+
+
+
+        fetchAppointments();
+        fetchPatientAlerts();
+    </script>
+</body>
+
+</html>

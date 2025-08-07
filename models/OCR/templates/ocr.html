@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Blood Report Summarizer</title>
+    <link rel="stylesheet" href="../static/css/ocr.css">
+</head>
+<body>
+    <header>
+        <h1>Medical Report Summarizer</h1>
+        <p class="subtitle">Upload your Medical report for instant analysis and summary</p>
+    </header>
+
+    <main>
+        <section class="upload-section">
+            <div class="upload-container">
+                <h2>Upload Medical Report</h2>
+                <div class="file-upload-container">
+                    <input type="file" id="fileInput" name="report-file" accept=".jpg,.jpeg,.png" class="file-input">
+                    <label for="fileInput" class="file-label">
+                        <span class="file-icon">🔬</span>
+                        <span class="upload-text">Upload Medical Report Image</span>
+                        <p class="upload-description">
+                            For best results:
+                            <ul>
+                                <li>Ensure the image is clear and well-lit</li>
+                                <li>All values should be clearly visible</li>
+                                <li>Report should be recent (within 3 months)</li>
+                                <li>Supported formats: JPG, PNG</li>
+                            </ul>
+                        </p>
+                    </label>
+                    <p class="file-info">No file chosen</p>
+                </div>
+                <div id="report-preview" class="image-preview hidden">
+                    <img src="" alt="Blood report preview" id="preview-image">
+                </div>
+            </div>
+
+            <div class="report-details">
+                <h3>Report Details</h3>
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label for="report-date">Report Date</label>
+                        <input type="date" id="report-date" name="report-date" required>
+                    </div>
+                </div>
+            </div>
+
+            <button type="submit" class="submit-btn" id="analyze-btn">Analyze Report</button>
+        </section>
+
+        <section id="result" class="results-section hidden">
+            <h2>Report Summary</h2>
+            <div class="results-grid">
+                <div class="result-card">
+                    <h3>Key Findings</h3>
+                    <div id="key-findings" class="findings-list"></div>
+                </div>
+                <div class="result-card">
+                    <h3>Abnormal Values</h3>
+                    <div id="abnormal-values" class="values-list"></div>
+                </div>
+                <div class="result-card full-width">
+                    <h3>Recommendations</h3>
+                    <div id="recommendations" class="recommendations-list"></div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <script src="../static/js/ocr.js"></script>
+</body>
+</html>
