@@ -1,10 +1,22 @@
+import os
 from fastapi import FastAPI
 from pydantic import BaseModel
-from langchain_ollama import OllamaLLM
 from langchain_core.prompts import ChatPromptTemplate
+from langchain_core.output_parsers import StrOutputParser
 import re
 import pandas as pd
 from fastapi.middleware.cors import CORSMiddleware
+
+# Use Groq API (set GROQ_API_KEY in env). Fallback: groq package direct call if langchain-groq not installed.
+try:
+    from langchain_groq import ChatGroq
+    _groq_api_key = os.getenv("GROQ_API_KEY")
+    if not _groq_api_key:
+        raise ValueError("GROQ_API_KEY environment variable is required for the chatbot.")
+    _llm = ChatGroq(api_key=_groq_api_key, model_name="llama-3.1-8b-instant", temperature=0.3)
+except Exception as e:
+    _llm = None
+    _groq_error = str(e)
 
 app = FastAPI()
 
@@ -17,18 +29,17 @@ app.add_middleware(
 )
 
 template = """
-Answer the medical question below
+You are a helpful medical assistant. Answer the medical question below concisely and accurately.
 
-Here is the conversation history:{context}
+Conversation history: {context}
 
 Question: {question}
 
 Answer: 
 """
 
-model = OllamaLLM(model="llama3.2")
 prompt = ChatPromptTemplate.from_template(template)
-chain = prompt | model
+chain = (prompt | _llm | StrOutputParser()) if _llm else None
 
 def is_medical_question(question):
     medical_keywords = [
@@ -49,19 +60,19 @@ def is_medical_question(question):
     "cold", "cough", "fever", "sinusitis", "bronchitis", "tonsillitis", "conjunctivitis",
     "gastroenteritis", "UTI", "diarrhea", "constipation", "acid reflux", "GERD", "IBS",
     "hemorrhoids", "psoriasis", "eczema", "dermatitis", "acne", "rosacea", "ringworm",
-    "athlete’s foot", "herpes", "chickenpox", "measles", "mumps", "rubella", "malaria",
+    "athlete's foot", "herpes", "chickenpox", "measles", "mumps", "rubella", "malaria",
     "dengue", "chikungunya", "typhoid", "tuberculosis", "hepatitis", "HIV", "AIDS", 
     "syphilis", "gonorrhea", "HPV", "lyme disease", "MRSA", "ebola", "zika virus",
     "hantavirus", "leptospirosis", "tetanus", "whooping cough", "polio", "rabies", "COVID-19",
     
     "heart failure", "coronary artery disease", "arrhythmia", "atherosclerosis",
     "cardiomyopathy", "atrial fibrillation", "myocardial infarction", "pulmonary embolism",
-    "COPD", "emphysema", "sleep apnea", "pulmonary fibrosis", "parkinson’s disease",
-    "alzheimer’s", "multiple sclerosis", "ALS", "meningitis", "encephalitis",
-    "bell’s palsy", "schizophrenia", "bipolar disorder", "cushing’s syndrome",
-    "addison’s disease", "hyperthyroidism", "hypothyroidism", "hashimoto’s thyroiditis",
-    "PCOS", "cirrhosis", "crohn’s disease", "ulcerative colitis", "pancreatitis",
-    "gallstones", "lupus", "rheumatoid arthritis", "scleroderma", "sjögren’s syndrome",
+    "COPD", "emphysema", "sleep apnea", "pulmonary fibrosis", "parkinson's disease",
+    "alzheimer's", "multiple sclerosis", "ALS", "meningitis", "encephalitis",
+    "bell's palsy", "schizophrenia", "bipolar disorder", "cushing's syndrome",
+    "addison's disease", "hyperthyroidism", "hypothyroidism", "hashimoto's thyroiditis",
+    "PCOS", "cirrhosis", "crohn's disease", "ulcerative colitis", "pancreatitis",
+    "gallstones", "lupus", "rheumatoid arthritis", "scleroderma", "sjögren's syndrome",
     "myasthenia gravis", "leukemia", "lymphoma", "melanoma", "sarcoma", "brain tumor",
     "breast cancer", "prostate cancer", "colorectal cancer", "ovarian cancer",
     "pancreatic cancer", "thyroid cancer",
@@ -153,6 +164,12 @@ async def chat_endpoint(request: ChatRequest):
         else:
             return {"answer": "Patient not found.", "updated_context": request.context}
     
+    if not _llm or chain is None:
+        return {
+            "answer": "Chatbot is not configured. Set GROQ_API_KEY and install: pip install langchain-groq",
+            "updated_context": request.context,
+        }
+
     if is_medical_question(request.question):
         result = chain.invoke({"context": request.context, "question": request.question})
     else:

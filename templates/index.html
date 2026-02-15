@@ -10,7 +10,7 @@
   </head>
   <body>
     <nav class="navbar">
-      <a href="/" class="navbar-brand">MedAssist</a>
+      <a href="{{ url_for('index') }}" class="navbar-brand">MedAssist</a>
       <a href="{{ url_for('login') }}" class="login-btn">Login</a>
     </nav>
 
@@ -22,7 +22,7 @@
           </div>
           <h2 class="service-title">Find a Doctor</h2>
           <p class="service-description">Search for qualified healthcare professionals in your area. Book appointments with specialists.</p>
-          <a href="/search_doctor" class="login-btn">Search Doctors</a>
+          <a href="{{ url_for('search_doctor') }}" class="login-btn">Search Doctors</a>
         </div>
 
        
@@ -33,7 +33,7 @@
           </div>
           <h2 class="service-title">Book Appointments</h2>
           <p class="service-description">Schedule medical appointments quickly and easily with our online booking system.</p>
-          <a href="/book_appointment" class="login-btn">Book Now</a>
+          <a href="{{ url_for('book_appointment') }}" class="login-btn">Book Now</a>
         </div>
       </div>
       <div class="gif-container">

@@ -12,7 +12,7 @@ PUBMED_API_BASE = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/"
 # Initialize Gemini model
 model = genai.GenerativeModel("gemini-pro")
 
-def is_medical_academics_question(user_message):
+def is_medical_academics_question(user_message: str) -> bool:
     """Determines if the query is related to medical academics."""
     prompt = (
         "You are an AI that determines if a question is related to medical academics. "
@@ -25,7 +25,7 @@ def is_medical_academics_question(user_message):
     classification = response.text.strip().lower()
     return classification == "yes"
 
-def fetch_pubmed_references(query, max_references=3):
+def fetch_pubmed_references(query: str, max_references: int = 3) -> list[str]:
     """Fetches references from PubMed."""
     params = {"db": "pubmed", "term": query, "retmax": max_references, "retmode": "json"}
     response = requests.get(f"{PUBMED_API_BASE}esearch.fcgi", params=params)
@@ -34,7 +34,7 @@ def fetch_pubmed_references(query, max_references=3):
         return []
 
     article_ids = response.json().get("esearchresult", {}).get("idlist", [])
-    references = []
+    references: list[str] = []
 
     for article_id in article_ids:
         details_response = requests.get(
@@ -49,7 +49,7 @@ def fetch_pubmed_references(query, max_references=3):
 
     return references
 
-def generate_response(user_message):
+def generate_response(user_message: str) -> str:
     """Generates an AI response after moderation and medical check."""
 
     # Step 1: Moderation Check

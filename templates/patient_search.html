@@ -3,26 +3,53 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Patient Search</title>
-    <link rel="stylesheet" href="patient_search.css">
+    <title>Patient Search - MedAssist</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/patient_search.css') }}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
 </head>
 <body>
-    <header>
-        <h1>Patient Search</h1>
-    </header>
+    <nav class="navbar">
+        <a href="{{ url_for('index') }}" class="navbar-brand">MedAssist</a>
+        <div class="nav-links">
+            <a href="{{ url_for('dashboard') }}" class="nav-link"><i class="fas fa-th-large"></i> Dashboard</a>
+            <a href="{{ url_for('patient_search_page') }}" class="nav-link active"><i class="fas fa-user-injured"></i> Patient Search</a>
+            <a href="{{ url_for('health_pred') }}" class="nav-link"><i class="fas fa-stethoscope"></i> Medical Prediction</a>
+            <a href="{{ url_for('logout') }}" class="nav-link logout"><i class="fas fa-sign-out-alt"></i> Logout</a>
+        </div>
+    </nav>
 
-    <main>
-        <div class="search-container">
-            <input type="text" id="search-input" placeholder="Enter patient name...">
-            <button id="search-btn">Search</button>
+    <main class="main-content">
+        <header class="page-header">
+            <h1><i class="fas fa-search"></i> Patient Search</h1>
+            <p class="subtitle">Search patient records by name</p>
+        </header>
+
+        <div class="search-section">
+            <div class="search-box-wrap">
+                <i class="fas fa-user-md search-icon"></i>
+                <input type="text" id="search-input" placeholder="Enter patient name..." autocomplete="off">
+                <button type="button" id="search-btn" class="btn-search">
+                    <i class="fas fa-search"></i> Search
+                </button>
+            </div>
+            <p class="search-hint">Type at least one character to search. Results update as you type.</p>
         </div>
 
-        <div class="results-container">
-            <h2>Search Results</h2>
-            <div id="results-list"></div>
+        <div class="results-section">
+            <h2 class="results-title"><i class="fas fa-list"></i> Results</h2>
+            <div id="results-list" class="results-list">
+                <div id="results-placeholder" class="placeholder">
+                    <i class="fas fa-user-friends"></i>
+                    <p>Enter a patient name above to search.</p>
+                </div>
+            </div>
+            <div id="results-loading" class="loading" style="display: none;">
+                <i class="fas fa-spinner fa-spin"></i> Searching...
+            </div>
+            <div id="results-error" class="error-message" style="display: none;"></div>
         </div>
     </main>
 
-    <script src="patient_search.js"></script>
+    <script src="{{ url_for('static', filename='js/patient_search.js') }}"></script>
 </body>
 </html>

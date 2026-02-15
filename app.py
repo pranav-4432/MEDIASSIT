@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, send_from_directory, redirect, url_for, session, flash,jsonify
+from flask import Flask, render_template, request, redirect, url_for, session, flash, jsonify
 from pymongo import MongoClient
 from urllib.parse import quote_plus
 from flask_mail import Mail, Message
@@ -14,15 +14,7 @@ import time
 import google.generativeai as genai
 from google.ai.generativelanguage_v1beta.types import content
 import pickle
-import os
-import cv2
-from ultralytics import YOLO
-import supervision as sv
-import pyresearch
-from werkzeug.utils import secure_filename
-import torch
 import numpy as np
-import os
 
 
 
@@ -81,29 +73,33 @@ def book_appointment():
 
 @app.route('/add_appointment', methods=['GET', 'POST'])
 def add_appointment():
-    if request.method == 'POST':
-        doc_name = session.get('doc_name')
-        patient_name = request.form['name']
-        patient_age = request.form['age']
-        appointment_time = request.form['appointmentTime']
-        disease = request.form['description']
-
-        exsisting_doc = appointment_data.find_one({"doctor_name":doc_name})
-        if exsisting_doc :
-            appointment_data.update_one(
-                {"doctor_name":doc_name},
-                {"$push": {"appointments": {
-                    "patient_name": patient_name,
-                    "disease": disease,
-                    "age": patient_age,
-                    "appointment_time": appointment_time
-                }}}
-            )
-
-            return render_template('book_appointment.html')
-
-
-    # return 
+    if request.method == 'GET':
+        return redirect(url_for('book_appointment'))
+    doc_name = session.get('doc_name')
+    if not doc_name:
+        return redirect(url_for('login'))
+    patient_name = request.form.get('name')
+    patient_age = request.form.get('age')
+    appointment_time = request.form.get('appointmentTime')
+    disease = request.form.get('description')
+    if not all([patient_name, patient_age, appointment_time, disease]):
+        flash("Please fill all fields.", category='error')
+        return render_template('book_appointment.html')
+    existing_doc = appointment_data.find_one({"doctor_name": doc_name})
+    if existing_doc:
+        appointment_data.update_one(
+            {"doctor_name": doc_name},
+            {"$push": {"appointments": {
+                "patient_name": patient_name,
+                "disease": disease,
+                "age": patient_age,
+                "appointment_time": appointment_time
+            }}}
+        )
+        flash("Appointment added successfully.", category='success')
+    else:
+        flash("Doctor session not found. Please log in again.", category='error')
+    return render_template('book_appointment.html')
 
 
 @app.route('/login_gen', methods=['POST'])
@@ -156,9 +152,7 @@ def verify_otp_login():
             return redirect(url_for('dashboard'))
         else:
             flash("Invalid OTP. Please try again.", category='error')
-            print(otp_input)
-            print(totp.now())
-            return render_template('verify_otp_login.html')
+            return redirect(url_for('login'))
 
 def serialize_doc(doc):
     """Convert ObjectId fields to string."""
@@ -178,16 +172,18 @@ def dashboard():
 @app.route('/api/patient_alerts', methods=['GET'])
 def alert_api():
     doc_name = session.get('doc_name')
-    doc_alerts = alerts.find_one({'Doctor Name':doc_name})
+    doc_alerts = alerts.find_one({'Doctor Name': doc_name})
     if doc_alerts:
-        return jsonify(serialize_doc(doc_alerts))  # Return empty list if key not found
+        return jsonify(serialize_doc(doc_alerts))
+    return jsonify({"alerts": []})
 
 @app.route('/api/upcoming_appointments', methods=['GET'])
 def appointment():
     doc_name = session.get('doc_name')
-    doc_appointments = appointment_data.find_one({'doctor_name':doc_name})
+    doc_appointments = appointment_data.find_one({'doctor_name': doc_name})
     if doc_appointments:
-        return jsonify(serialize_doc(doc_appointments))  # Return empty list if key not found
+        return jsonify(serialize_doc(doc_appointments))
+    return jsonify({"appointments": []})
 
 @app.route('/health_pred')
 def health_pred():
@@ -306,18 +302,16 @@ def upload_file():
     #     return jsonify({"error": "Invalid AI response format"}), 500
 
     try:
-        if isinstance(cbc_analysis_result, str):  # If it's a string, parse it
+        if isinstance(cbc_analysis_result, str):
             cbc_analysis_result = json.loads(cbc_analysis_result)
     except json.JSONDecodeError:
-        return {"error": "Invalid AI response format"}
+        return jsonify({"error": "Invalid AI response format"}), 500
     result = {
         "Abnormal Values": cbc_analysis_result.get("Causes", "N/A"),
         "Possible Disease": cbc_analysis_result.get("Disease", "N/A"),
         "Remedies": cbc_analysis_result.get("Possible Remedies", "N/A"),
     }
 
-    # return result
-    print(result)
     return jsonify(result)
 
 
@@ -352,68 +346,48 @@ def predict_cancer():
         return jsonify({'error': str(e)})
 
 
-UPLOAD_FOLDER_brain = "uploads_brain"
-RESULTS_FOLDER = "results"
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
-os.makedirs(RESULTS_FOLDER, exist_ok=True)
-
 app.config["UPLOAD_FOLDER"] = UPLOAD_FOLDER
 
-# Allowed file extensions
-ALLOWED_EXTENSIONS = {"png", "jpg", "jpeg"}
+@app.route('/patient_search')
+def patient_search_page():
+    if session.get('doc_name') is None:
+        return redirect(url_for('login'))
+    return render_template('patient_search.html')
 
-# Function to check file extension
-def allowed_file(filename):
-    return "." in filename and filename.rsplit(".", 1)[1].lower() in ALLOWED_EXTENSIONS
+@app.route('/api/patient_search', methods=['GET'])
+def api_patient_search():
+    if session.get('doc_name') is None:
+        return jsonify({"error": "Unauthorized"}), 401
+    q = request.args.get('q', '').strip()
+    if not q:
+        return jsonify({"patients": []})
+    regex_pattern = f".*{q}.*"
+    cursor = patient_record.find({"Name": {"$regex": regex_pattern, "$options": "i"}}).limit(50)
+    patients = [serialize_doc(doc) for doc in cursor]
+    return jsonify({"patients": patients})
 
-
-# @app.route("/upload", methods=["POST"])
-# def upload_file():
-#     if "file" not in request.files:
-#         return jsonify({"error": "No file uploaded"}), 400
-
-#     file = request.files["file"]
-
-#     if file.filename == "":
-#         return jsonify({"error": "No selected file"}), 400
-
-#     if file and allowed_file(file.filename):
-#         filename = secure_filename(file.filename)
-#         file_path = os.path.join(app.config["UPLOAD_FOLDER"], filename)
-#         file.save(file_path)
-
-#         # Run YOLO detection
-#         results = model(file_path)
-
-#         # Process results
-#         for result in results:
-#             img = result.plot()  # Annotated image
-#             result_path = os.path.join(RESULTS_FOLDER, filename)
-#             cv2.imwrite(result_path, img)
-
-#         return jsonify({"filename": filename, "result_path": result_path})
-
-#     return jsonify({"error": "Invalid file format"}), 400
-
-# # Route to serve the processed image
-# @app.route("/results/<filename>")
-# def get_result_image(filename):
-#     return send_from_directory(RESULTS_FOLDER, filename)
-
-@app.route('/search',methods=['GET','POST'])
+@app.route('/search', methods=['GET', 'POST'])
 def search():
     if request.method == 'POST':
-        search_query = request.form['search_query']
-        print(search_query)
+        search_query = request.form.get('search_query', '').strip()
+        if not search_query:
+            return redirect(url_for('dashboard'))
         regex_pattern = f".*^{search_query}.*"
-        search_result = list(patient_record.find({"Name":{"$regex": regex_pattern, "$options": "i"}}))
-        # print(search_result)
-        return render_template('search_result.html',user=search_result)
+        search_result = list(patient_record.find({"Name": {"$regex": regex_pattern, "$options": "i"}}))
+        return render_template('search_result.html', user=search_result)
+    return redirect(url_for('dashboard'))
 
 
-@app.route('/logout',methods=['POST','GET'])
+@app.route('/profile')
+def profile():
+    if session.get('doc_name') is None:
+        return redirect(url_for('login'))
+    return redirect(url_for('dashboard'))
+
+@app.route('/logout', methods=['POST', 'GET'])
 def logout():
-    session.pop("doc_name")
+    session.pop("doc_name", None)
     return redirect(url_for('login'))
 
 
