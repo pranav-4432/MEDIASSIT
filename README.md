@@ -1,20 +1,18 @@
 # MediAssist - Healthcare Management System
 
-![MediAssist Banner](static/images/Banner.png)
-
-**MediAssist** is a healthcare management web application for doctors and staff: OTP-based login, dashboard with appointments and alerts, patient search, OCR blood report summarization, health prediction (diabetes, cancer), and appointment booking. Optional chatbot services use Groq or Gemini + PubMed.
+**MediAssist** is a healthcare management web application for doctors and staff: JWT login (email + password), dashboard with appointments and alerts, patient search, OCR blood report extraction, health prediction (diabetes, cancer), and appointment booking. Optional chatbot uses Groq.
 
 ---
 
 ## Overview
 
-- **Doctor login** – Email OTP via Flask-Mail; session-based auth
+- **Doctor login** – Email + password; JWT stored in httpOnly cookie; no email/OTP
 - **Dashboard** – Upcoming appointments and patient alerts (MongoDB), links to OCR, Patient Search, Medical Prediction
 - **Patient search** – Search by name (dashboard search bar → results page; or dedicated Patient Search page with live API)
-- **OCR** – Upload blood report image → Azure OCR + Gemini analysis → summary (abnormal values, possible disease, remedies)
+- **OCR** – Upload blood report image → Tesseract (free) text extraction → raw text returned
 - **Health prediction** – Diabetes and breast cancer prediction via Flask APIs; UI also references external services (e.g. fracture/brain-tumor on other ports) and mock flows
 - **Appointments** – Book-appointment form posts to `/add_appointment`; dashboard shows upcoming appointments from MongoDB
-- **Optional services** – FastAPI medical chatbot (Groq) and CLI medical-academics bot (Gemini + PubMed)
+- **Medical chatbot** – Chat button on homepage; Groq-powered (set GROQ_API_KEY). Patient lookup: type "patient &lt;name&gt;".
 
 ---
 
@@ -28,7 +26,7 @@
 │
 ├── 📂 templates              # Jinja2 templates (all pages use url_for for links)
 │   ├── index.html            # Landing: Search Doctors, Book Now
-│   ├── login.html            # OTP login
+│   ├── login.html            # Login (email + password, JWT)
 │   ├── appointments.html     # Available doctors → Book Appointment
 │   ├── book_appointment.html # Booking form → /add_appointment
 │   ├── dashboard.html        # Doctor dashboard (search, OCR, appointments, alerts)
@@ -44,9 +42,7 @@
 │   └── images/               # Banner.png, home_gif.gif
 │
 ├── 📂 services               # Optional; not required for main app
-│   ├── chatbot.py            # FastAPI medical chatbot (Groq API)
-│   ├── advance_chatbot.py    # CLI: Gemini + PubMed
-│   └── README.md
+│   └── README.md              # (Chatbot is in main app: /api/chat)
 │
 ├── 📂 models
 │   ├── 📂 OCR                # Standalone copy of templates + static + minimal Flask app
@@ -66,9 +62,10 @@
 | Route | Description |
 |-------|-------------|
 | `GET /` | Landing (index) |
-| `GET/POST /login` | Login page |
-| `POST /login_gen` | Send OTP |
-| `POST/GET /verify_otp_login` | Verify OTP → dashboard |
+| `GET /signup` | Sign-up form (name, email, password) |
+| `POST /signup` | Create account → redirect to login |
+| `GET /login` | Login form (email + password) |
+| `POST /login` | Submit credentials → JWT cookie + redirect to dashboard |
 | `GET /search_doctor` | Doctor profile / search doctors |
 | `GET /book_appointment` | Booking form |
 | `POST /add_appointment` | Submit booking (requires session) |
@@ -85,6 +82,7 @@
 | `POST /predict_cancer` | Breast cancer prediction API |
 | `GET /api/upcoming_appointments` | Dashboard appointments (JSON) |
 | `GET /api/patient_alerts` | Dashboard alerts (JSON) |
+| `POST /api/chat` | Medical chatbot (JSON: `question`, `context` → `answer`, `updated_context`) |
 
 All template links use `url_for(...)` so routes stay consistent.
 
@@ -102,9 +100,9 @@ pip install -r requirements.txt
 
 ### 2. Main application
 
-- **MongoDB** – App uses a MongoDB Atlas connection (see `app.py`). Ensure the DB has collections used by the app (e.g. doctor_data, patient_record, appointments, verify_otp_email, alerts) or adjust the connection string.
+- **MongoDB** – App uses a MongoDB Atlas connection (see `app.py`). Ensure the DB has collections used by the app (e.g. doctor_data, patient_record, appointments, alerts). Doctors need `Email`, `Name`; optional `password_hash` for JWT login. or adjust the connection string.
 - **Pickle models** – Ensure `pickle/` contains `breast_cancer.pkl`, `heart_rf.pkl`, `random_forest_pipeline.pkl` (used by prediction routes).
-- **Azure OCR + Gemini** – OCR flow uses Azure Computer Vision and Google Gemini (keys in `app.py`). Replace with your own keys or env vars if needed.
+- **OCR** – Uses **Tesseract** (free, open-source). Install the Tesseract engine: [Windows](https://github.com/UB-Mannheim/tesseract/wiki), then `pip install pytesseract Pillow`. No API keys needed.
 
 Run the main app:
 
@@ -112,7 +110,7 @@ Run the main app:
 python app.py
 ```
 
-Open **http://127.0.0.1:5000** (or the port shown in the console). Use **Login** → enter doctor email → OTP → **Dashboard**. From there you can use Patient Search, OCR, Medical Prediction, and Appointments.
+Open **http://127.0.0.1:5000** (or the port shown in the console). Use **Login** with a doctor email and password → **Dashboard**. From there you can use Patient Search, OCR, Medical Prediction, and Appointments. First time a doctor logs in, their password is stored (hashed) in MongoDB.
 
 ### 3. Optional: OCR-only module (`models/OCR`)
 
@@ -125,35 +123,21 @@ python app.py
 
 Runs on **http://127.0.0.1:5001** with local templates and static files.
 
-### 4. Optional: FastAPI medical chatbot (Groq)
+### 4. Optional: Medical chatbot (Groq)
 
-- Get an API key from [console.groq.com](https://console.groq.com).
-- Set `GROQ_API_KEY` in your environment.
-- From **project root**:
+The chatbot is built into the Flask app. On the homepage, click **Chat** to open the assistant.
 
-```sh
-pip install langchain-groq
-uvicorn services.chatbot:app --host 0.0.0.0 --port 8000 --reload
-```
-
-The main app’s script.js can call `http://127.0.0.1:8000/chat` for the chatbot if you keep that integration.
-
-### 5. Optional: CLI medical-academics chatbot (Gemini + PubMed)
-
-- Set `GEMINI_API_KEY` in `.env`.
-- From project root:
-
-```sh
-python services/advance_chatbot.py
-```
+- Get a free API key at [console.groq.com](https://console.groq.com).
+- Set `GROQ_API_KEY` in your environment and run the main app. No separate server needed.
+- Install: `pip install langchain-groq` (included in requirements).
+- Type **"patient &lt;name&gt;"** to look up a patient from MongoDB.
 
 ---
 
 ## Environment / Configuration
 
-- **Flask** – `app.py`: MongoDB URI, Flask-Mail credentials, Azure OCR key, Gemini API key. Move secrets to env vars in production.
-- **Chatbot (Groq)** – `GROQ_API_KEY`.
-- **Advance chatbot** – `GEMINI_API_KEY` in `.env`.
+- **Flask** – `app.py`: MongoDB URI, `SECRET_KEY` for JWT. Move secrets to env vars in production.
+- **Chatbot (Groq)** – `GROQ_API_KEY` (optional).
 
 ---
 
@@ -161,9 +145,8 @@ python services/advance_chatbot.py
 
 - **Frontend:** HTML, CSS, JavaScript, FontAwesome, Bootstrap (search result page).
 - **Backend:** Flask (sessions, MongoDB, REST endpoints).
-- **AI/ML:** Google Gemini (OCR summary, advance_chatbot), Azure Computer Vision (OCR), Scikit-Learn (diabetes, cancer, heart pipelines), optional Groq (FastAPI chatbot).
-- **Data:** MongoDB (doctors, patients, appointments, OTP, alerts).
-- **Optional:** FastAPI, LangChain (Groq), PubMed API.
+- **AI/ML:** Tesseract OCR (free), Scikit-Learn (diabetes, cancer, heart), Groq + LangChain (medical chatbot in Flask).
+- **Data:** MongoDB (doctors, patients, appointments, alerts). Auth: JWT in cookie, password hash in doctor document.
 
 ---
 

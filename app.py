@@ -1,50 +1,67 @@
-from flask import Flask, render_template, request, redirect, url_for, session, flash, jsonify
-from pymongo import MongoClient
-from urllib.parse import quote_plus
-from flask_mail import Mail, Message
-from datetime import datetime
-from bson import ObjectId
-import pyotp
-from azure.cognitiveservices.vision.computervision import ComputerVisionClient
-from azure.cognitiveservices.vision.computervision.models import OperationStatusCodes
-from msrest.authentication import CognitiveServicesCredentials
 import os
-import json
-import time
-import google.generativeai as genai
-from google.ai.generativelanguage_v1beta.types import content
+from datetime import datetime, timedelta
+
+try:
+    from dotenv import load_dotenv
+    load_dotenv()
+except ImportError:
+    pass
+
+from flask import Flask, render_template, request, redirect, url_for, session, flash, jsonify, make_response
+from pymongo import MongoClient
+from pymongo.errors import ConfigurationError as MongoConfigurationError
+from urllib.parse import quote_plus
+from bson import ObjectId
+from werkzeug.security import check_password_hash, generate_password_hash
+import jwt
+import re
 import pickle
 import numpy as np
-
-
+# Optional: medical chatbot (Groq). Set GROQ_API_KEY to enable.
+try:
+    from langchain_groq import ChatGroq
+    from langchain_core.prompts import ChatPromptTemplate
+    from langchain_core.output_parsers import StrOutputParser
+    _groq_key = os.environ.get("GROQ_API_KEY")
+    _chat_llm = ChatGroq(api_key=_groq_key, model_name="llama-3.1-8b-instant", temperature=0.3) if _groq_key else None
+    _chat_prompt = ChatPromptTemplate.from_template(
+        "You are a helpful medical assistant. Answer the medical question below concisely and accurately.\n\n"
+        "Conversation history: {context}\n\nQuestion: {question}\n\nAnswer: "
+    )
+    _chat_chain = (_chat_prompt | _chat_llm | StrOutputParser()) if _chat_llm else None
+except Exception:
+    _chat_llm = None
+    _chat_chain = None
 
 app = Flask(__name__)
-app.config['SECRET_KEY'] = 'mysecretkey'
-app.config['MAIL_SERVER'] = 'smtp.gmail.com'
-app.config['MAIL_PORT'] = 587
-app.config['MAIL_USE_TLS'] = True
-app.config['MAIL_USE_SSL'] = False
-app.config['MAIL_USERNAME'] = 'y86761836@gmail.com'
-app.config['MAIL_PASSWORD'] = 'hlgr qyvj jlpf nqhy'
-app.config['MAIL_DEFAULT_SENDER'] = 'y86761836@gmail.com'
+app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'mysecretkey')
+app.config['JWT_COOKIE_NAME'] = 'auth_token'
+app.config['JWT_EXPIRY_HOURS'] = 24
 
 UPLOAD_FOLDER = "uploads_ocr"
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
-username = quote_plus("yrane4616")
-password = quote_plus("y@S#rane46")
-MONGO_URI = f"mongodb+srv://{username}:{password}@medicare.j9svm.mongodb.net/?retryWrites=true&w=majority&appName=MediCare"
-client = MongoClient(MONGO_URI)
+# MongoDB: set MONGO_URI in .env (see .env.example). Leave unset to use default (may not resolve).
+MONGO_URI = os.environ.get("MONGO_URI")
+if not MONGO_URI:
+    _user = quote_plus("yrane4616")
+    _pass = quote_plus("y@S#rane46")
+    MONGO_URI = f"mongodb+srv://{_user}:{_pass}@medicare.j9svm.mongodb.net/?retryWrites=true&w=majority&appName=MediCare"
 
-
-db = client['MediCare']
-doctor = db['doctor_data']
-patient_record = db['patient_record']
-appointment_data = db['appointments']
-otp_verify = db['verify_otp_email']
-alerts = db['alerts']
-
-mail = Mail(app)
+try:
+    client = MongoClient(MONGO_URI, serverSelectionTimeoutMS=10000)
+    client.admin.command("ping")  # force connection attempt
+    db = client["MediCare"]
+    doctor = db["doctor_data"]
+    patient_record = db["patient_record"]
+    appointment_data = db["appointments"]
+    alerts = db["alerts"]
+except (MongoConfigurationError, Exception) as e:
+    print("\n*** MongoDB connection failed ***")
+    print("Set MONGO_URI in your .env file to your MongoDB Atlas connection string.")
+    print("Example: MONGO_URI=mongodb+srv://USER:PASSWORD@YOUR-CLUSTER.mongodb.net/?retryWrites=true&w=majority")
+    print("Error:", str(e))
+    raise SystemExit(1) from e
 
 with open(r'pickle\breast_cancer.pkl', 'rb') as f:
     breast_cancer_pipeline = pickle.load(f)
@@ -59,9 +76,103 @@ with open(r'pickle\random_forest_pipeline.pkl', 'rb') as f:
 def index():
     return render_template('index.html')
 
+def _create_token(email: str, doc_name: str) -> str:
+    payload = {
+        'sub': email,
+        'doc_name': doc_name,
+        'exp': datetime.utcnow() + timedelta(hours=app.config['JWT_EXPIRY_HOURS']),
+    }
+    return jwt.encode(payload, app.config['SECRET_KEY'], algorithm='HS256')
+
+
+def _load_user_from_token():
+    if session.get('doc_name'):
+        return
+    token = request.cookies.get(app.config['JWT_COOKIE_NAME'])
+    if not token:
+        return
+    try:
+        payload = jwt.decode(token, app.config['SECRET_KEY'], algorithms=['HS256'])
+        session['doc_name'] = payload.get('doc_name')
+    except jwt.ExpiredSignatureError:
+        pass
+    except jwt.InvalidTokenError:
+        pass
+
+
+@app.before_request
+def before_request():
+    _load_user_from_token()
+
+
+@app.route('/signup', methods=['GET', 'POST'])
+def signup():
+    if request.method == 'GET':
+        return render_template('signup.html')
+    name = (request.form.get('name') or '').strip()
+    email = (request.form.get('email') or '').strip().lower()
+    password = request.form.get('password') or ''
+    password_confirm = request.form.get('password_confirm') or ''
+    if not name or not email or not password:
+        flash('Name, email and password are required.', 'error')
+        return redirect(url_for('signup'))
+    if len(password) < 6:
+        flash('Password must be at least 6 characters.', 'error')
+        return redirect(url_for('signup'))
+    if password != password_confirm:
+        flash('Passwords do not match.', 'error')
+        return redirect(url_for('signup'))
+    if doctor.find_one({'Email': email}):
+        flash('An account with this email already exists. Log in instead.', 'error')
+        return redirect(url_for('signup'))
+    doctor.insert_one({
+        'Name': name,
+        'Email': email,
+        'password_hash': generate_password_hash(password),
+    })
+    flash('Account created. You can now log in.', 'success')
+    return redirect(url_for('login'))
+
+
 @app.route('/login', methods=['GET', 'POST'])
 def login():
-    return render_template('login.html')
+    if request.method == 'GET':
+        return render_template('login.html')
+    email = (request.form.get('email') or '').strip().lower()
+    password = request.form.get('password') or ''
+    if not email or not password:
+        flash('Email and password are required.', 'error')
+        return redirect(url_for('login'))
+    doc = doctor.find_one({'Email': email})
+    if not doc:
+        flash('Invalid email or password.', 'error')
+        return redirect(url_for('login'))
+    password_hash = doc.get('password_hash')
+    if password_hash:
+        if not check_password_hash(password_hash, password):
+            flash('Invalid email or password.', 'error')
+            return redirect(url_for('login'))
+    else:
+        doctor.update_one(
+            {'Email': email},
+            {'$set': {'password_hash': generate_password_hash(password)}}
+        )
+    doc_name = doc.get('Name', email)
+    token = _create_token(email, doc_name)
+    if isinstance(token, bytes):
+        token = token.decode('utf-8')
+    session['doc_name'] = doc_name
+    resp = make_response(redirect(url_for('dashboard')))
+    resp.set_cookie(
+        app.config['JWT_COOKIE_NAME'],
+        token,
+        max_age=app.config['JWT_EXPIRY_HOURS'] * 3600,
+        httponly=True,
+        samesite='Lax',
+    )
+    flash('Logged in successfully.', 'success')
+    return resp
+
 
 @app.route('/search_doctor', methods=['GET', 'POST'])
 def search_doctor():
@@ -101,58 +212,6 @@ def add_appointment():
         flash("Doctor session not found. Please log in again.", category='error')
     return render_template('book_appointment.html')
 
-
-@app.route('/login_gen', methods=['POST'])
-def login_gen():
-    email = request.form.get('email')
-    existing_user = doctor.find_one({"Email": email})
-
-    if existing_user:
-        secret_otp = pyotp.random_base32()
-        totp = pyotp.TOTP(secret_otp, digits=6, interval=120)
-        otp = totp.now()
-
-        msg = Message('OTP Verification', recipients=[email], body=f"Your OTP for login is: {otp}")
-        mail.send(msg)
-
-        otp_verify.update_one(
-            {"email": email},
-            {"$set": {"otp_secret": secret_otp, "otp_timestamp": datetime.utcnow()}},
-            upsert=True
-        )
-
-        session['email'] = email  # Store email in session
-
-        return jsonify({"success": True, "message": "OTP sent successfully."})
-    else:
-        return jsonify({"success": False, "message": "User not found. Check your email."})
-
-
-@app.route('/verify_otp_login', methods=['POST', 'GET'])
-def verify_otp_login():
-    if request.method == 'POST':
-        email = session.get('email')
-        otp_input = request.form.get('otp')
-
-        user_data = otp_verify.find_one({"email": email})
-
-        if not user_data:
-            flash("No OTP request found. Please login again.", category='error')
-            return redirect(url_for('login'))
-
-        secret_otp = user_data['otp_secret'] 
-        totp = pyotp.TOTP(secret_otp, digits=6, interval=120)
-
-        
-        if totp.verify(otp_input):
-            doc_info = doctor.find_one({"Email": email})
-            flash("OTP Verified Successfully!", category='success')
-            session.pop('email',None)
-            session['doc_name'] = doc_info['Name']
-            return redirect(url_for('dashboard'))
-        else:
-            flash("Invalid OTP. Please try again.", category='error')
-            return redirect(url_for('login'))
 
 def serialize_doc(doc):
     """Convert ObjectId fields to string."""
@@ -197,65 +256,20 @@ def ocr():
 
 
 
-#OCR Summarization
-# Azure OCR Setup
-AZURE_SUBSCRIPTION_KEY = "DyGSY4M79hwG0BNmlJYAFNbxS8tM0hCqeJO8h7bMCTUJ3ACOYFrfJQQJ99BEACGhslBXJ3w3AAAFACOGvIeF"
-AZURE_ENDPOINT = "https://mediassit404.cognitiveservices.azure.com/"
-client = ComputerVisionClient(AZURE_ENDPOINT, CognitiveServicesCredentials(AZURE_SUBSCRIPTION_KEY))
-
-# Google Gemini AI Setup
-os.environ["GOOGLE_API_KEY"] = "AIzaSyAgbm7-9iP4Z_CODVJf6xEeLS8fH-btDr4"
-genai.configure(api_key=os.environ["GOOGLE_API_KEY"])
-
-generation_config = {
-    "temperature": 1,
-    "top_p": 0.95,
-    "top_k": 40,
-    "max_output_tokens": 100,
-    "response_schema": content.Schema(
-        type=content.Type.OBJECT,
-        required=["Disease", "Causes"],
-        properties={
-            "Disease": content.Schema(type=content.Type.STRING),
-            "Causes": content.Schema(type=content.Type.STRING),
-            "Possible Remedies": content.Schema(type=content.Type.STRING),
-        },
-    ),
-    "response_mime_type": "application/json",
-}
-
-model = genai.GenerativeModel(
-    model_name="gemini-2.0-flash",
-    generation_config=generation_config,
-)
+# OCR: Tesseract (free, open-source). Install: https://github.com/UB-Mannheim/tesseract/wiki
+try:
+    import pytesseract
+    from PIL import Image
+    _ocr_available = True
+except ImportError:
+    _ocr_available = False
 
 
-def analyze_cbc_report(cbc_text):
-    prompt = f"""
-    You are a medical AI assistant. Analyze the given CBC report, summarize key findings, and predict possible diseases based on abnormalities.
-
-    *CBC Report:*  
-    {cbc_text}
-
-    *Your tasks:*
-    - Extract key blood parameters and values.
-    - Identify abnormal values and possible implications.
-    - Summarize findings concisely.
-    - Predict potential diseases based on deviations.
-    - Highlight key points in the report.
-
-    *Output Format:*
-    - Summary of CBC report in one word.
-    - Possible conditions based on abnormalities.
-    - Important highlights.
-
-    Provide a structured response.
-    """
-    
-    chat_session = model.start_chat(history=[])
-    response = chat_session.send_message(prompt)
-    
-    return response.text
+def _run_ocr(image_path: str) -> str:
+    if not _ocr_available:
+        return ""
+    img = Image.open(image_path)
+    return pytesseract.image_to_string(img)
 
 
 @app.route("/upload/ocr", methods=["POST"])
@@ -267,52 +281,23 @@ def upload_file():
     if file.filename == "":
         return jsonify({"error": "No selected file"}), 400
 
-    # Save file
     file_path = os.path.join(UPLOAD_FOLDER, file.filename)
     file.save(file_path)
 
-    # Run OCR
-    with open(file_path, "rb") as image_file:
-        response = client.read_in_stream(image_file, raw=True)
-
-    operation_location = response.headers["Operation-Location"]
-    operation_id = operation_location.split("/")[-1]
-
-    while True:
-        result = client.get_read_result(operation_id)
-        if result.status not in ["notStarted", "running"]:
-            break
-        time.sleep(1)
-
-    extracted_ocr = ""
-    if result.status == OperationStatusCodes.succeeded:
-        for page in result.analyze_result.read_results:
-            for line in page.lines:
-                extracted_ocr += line.text + "\n"
-    else:
-        return jsonify({"error": "OCR Failed"}), 500
-
-    # Run AI Analysis
-    cbc_analysis_result = analyze_cbc_report(extracted_ocr)
-
-    # Ensure the response is structured properly
-    # try:
-    #     analysis_data = eval(cbc_analysis_result)  # Convert string to dict if needed
-    # except:
-    #     return jsonify({"error": "Invalid AI response format"}), 500
+    if not _ocr_available:
+        return jsonify({"error": "OCR not available. Install: pip install pytesseract Pillow, and install Tesseract from https://github.com/UB-Mannheim/tesseract/wiki"}), 503
 
     try:
-        if isinstance(cbc_analysis_result, str):
-            cbc_analysis_result = json.loads(cbc_analysis_result)
-    except json.JSONDecodeError:
-        return jsonify({"error": "Invalid AI response format"}), 500
-    result = {
-        "Abnormal Values": cbc_analysis_result.get("Causes", "N/A"),
-        "Possible Disease": cbc_analysis_result.get("Disease", "N/A"),
-        "Remedies": cbc_analysis_result.get("Possible Remedies", "N/A"),
-    }
+        extracted_ocr = _run_ocr(file_path)
+    except Exception as e:
+        return jsonify({"error": f"OCR failed: {str(e)}. Ensure Tesseract is installed on your system."}), 500
 
-    return jsonify(result)
+    text = extracted_ocr.strip() if extracted_ocr else "No text extracted."
+    return jsonify({
+        "Abnormal Values": "N/A",
+        "Possible Disease": text,
+        "Remedies": "N/A",
+    })
 
 
 
@@ -387,8 +372,72 @@ def profile():
 
 @app.route('/logout', methods=['POST', 'GET'])
 def logout():
-    session.pop("doc_name", None)
-    return redirect(url_for('login'))
+    session.pop('doc_name', None)
+    resp = make_response(redirect(url_for('login')))
+    resp.set_cookie(app.config['JWT_COOKIE_NAME'], '', max_age=0)
+    return resp
+
+
+# ---- Medical chatbot (integrated) ----
+def _is_medical_question(question: str) -> bool:
+    keywords = (
+        "doctor physician surgeon specialist nurse healthcare hospital clinic pharmacy patient "
+        "appointment prescription consultation check-up symptoms diagnosis disease infection fever allergy "
+        "chronic cancer diabetes hypertension arthritis asthma stroke flu COVID pneumonia migraine "
+        "brain heart lungs liver kidney stomach intestines pancreas spleen bladder prostate thyroid "
+        "cold cough fever sinusitis bronchitis tonsillitis UTI diarrhea constipation acid reflux GERD IBS "
+        "heart failure coronary artery disease arrhythmia COPD emphysema sleep apnea parkinson alzheimer "
+        "headache nausea vomiting dizziness fatigue weakness shortness of breath chest pain abdominal pain "
+        "blood test MRI X-ray CT scan ultrasound endoscopy biopsy ECG EEG mammography "
+        "cardiology dermatology endocrinology gastroenterology neurology oncology pediatrics psychiatry "
+        "medication vaccination therapy surgery"
+    )
+    q = question.lower()
+    return any(kw in q for kw in keywords.split())
+
+
+def _chat_patient_lookup(name: str):  # from MongoDB
+    if not name or not name.strip():
+        return None
+    pattern = re.escape(name.strip())
+    doc = patient_record.find_one({"Name": {"$regex": f"^{pattern}$", "$options": "i"}})
+    if not doc:
+        return None
+    return {k: (str(v) if isinstance(v, ObjectId) else v) for k, v in doc.items()}
+
+
+@app.route('/api/chat', methods=['POST'])
+def api_chat():
+    data = request.get_json(force=True, silent=True) or {}
+    question = (data.get('question') or '').strip()
+    context = data.get('context') or ''
+    if not question:
+        return jsonify({"answer": "Please enter a question.", "updated_context": context})
+
+    # "patient <name>" lookup from MongoDB
+    match = re.search(r"patient\s+(.+)", question, re.IGNORECASE)
+    if match:
+        name = match.group(1).strip()
+        patient = _chat_patient_lookup(name)
+        if patient:
+            lines = [f"{k}: {v}" for k, v in patient.items()]
+            answer = "Patient details:\n" + "\n".join(lines)
+            return jsonify({"answer": answer, "updated_context": context})
+        return jsonify({"answer": "Patient not found.", "updated_context": context})
+
+    if not _chat_chain:
+        return jsonify({
+            "answer": "Chatbot is not configured. Set GROQ_API_KEY in your environment and install: pip install langchain-groq",
+            "updated_context": context,
+        })
+
+    if _is_medical_question(question):
+        result = _chat_chain.invoke({"context": context, "question": question})
+    else:
+        result = "I'm here to assist with medical-related queries only."
+
+    new_context = f"{context}\nUser: {question}\nAssistant: {result}"
+    return jsonify({"answer": result, "updated_context": new_context})
 
 
 if __name__ == '__main__':

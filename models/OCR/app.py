@@ -6,7 +6,7 @@ Or from this directory: flask --app app run
 """
 import os
 
-from flask import Flask, render_template
+from flask import Flask, render_template, request, redirect
 
 # Run from repo root or from models/OCR
 BASE = os.path.dirname(os.path.abspath(__file__))
@@ -21,8 +21,10 @@ app = Flask(
 def index():
     return render_template("index.html")
 
-@app.route("/login")
+@app.route("/login", methods=["GET", "POST"])
 def login():
+    if request.method == "POST":
+        return redirect("http://127.0.0.1:5000/login", code=307)
     return render_template("login.html")
 
 @app.route("/appointments")

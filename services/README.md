@@ -1,8 +1,5 @@
-# Optional services (not part of main Flask app)
+# Services
 
-These are **standalone** tools and are not linked to the main MedAssist Flask app (`app.py`).
+The **medical chatbot** is now integrated into the main Flask app (`app.py`). Use the "Chat" button on the homepage; the backend route is `POST /api/chat`. Set `GROQ_API_KEY` to enable the Groq-powered assistant.
 
-- **chatbot.py** – FastAPI medical Q&A + patient lookup using **Groq API**. Set `GROQ_API_KEY` in your environment, then: `pip install langchain-groq` and run from project root: `uvicorn services.chatbot:app --reload`
-- **advance_chatbot.py** – CLI script using Gemini + PubMed for medical academics. Run with: `python advance_chatbot.py`
-
-Run them from the project root so paths like `sheets/patients.csv` resolve correctly, or adjust paths inside each file.
+This folder is reserved for future optional standalone tools (e.g. scripts or workers) that are not part of the main web app.

@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Login - MedAssist</title>
+    <title>Sign up - MedAssist</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/login.css') }}">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
 </head>
@@ -14,7 +14,7 @@
 
     <div class="login-container">
         <div class="login-form">
-            <h2>Login</h2>
+            <h2>Create account</h2>
             {% with messages = get_flashed_messages(with_categories=True) %}
                 {% if messages %}
                     {% for category, message in messages %}
@@ -23,19 +23,27 @@
                 {% endif %}
             {% endwith %}
 
-            <form action="{{ url_for('login') }}" method="POST">
+            <form action="{{ url_for('signup') }}" method="POST">
+                <div class="form-group">
+                    <label for="name">Full name</label>
+                    <input type="text" id="name" name="name" placeholder="e.g. Dr. Jane Smith" required autocomplete="name" minlength="2">
+                </div>
                 <div class="form-group">
                     <label for="email">Email</label>
                     <input type="email" id="email" name="email" placeholder="Enter your email" required autocomplete="email">
                 </div>
                 <div class="form-group">
                     <label for="password">Password</label>
-                    <input type="password" id="password" name="password" placeholder="Enter your password" required autocomplete="current-password">
+                    <input type="password" id="password" name="password" placeholder="At least 6 characters" required autocomplete="new-password" minlength="6">
                 </div>
-                <button type="submit" class="primary-btn">Log in</button>
+                <div class="form-group">
+                    <label for="password_confirm">Confirm password</label>
+                    <input type="password" id="password_confirm" name="password_confirm" placeholder="Repeat password" required autocomplete="new-password" minlength="6">
+                </div>
+                <button type="submit" class="primary-btn">Sign up</button>
             </form>
             <p class="form-footer">
-                Don't have an account? <a href="{{ url_for('signup') }}">Sign up</a>
+                Already have an account? <a href="{{ url_for('login') }}">Log in</a>
             </p>
         </div>
     </div>
