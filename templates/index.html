@@ -10,7 +10,8 @@
   </head>
   <body>
     <nav class="navbar">
-      <a href="/" class="navbar-brand">MedAssist</a>
+      <a href="{{ url_for('index') }}" class="navbar-brand">MedAssist</a>
+      <a href="{{ url_for('signup') }}" class="nav-link">Sign up</a>
       <a href="{{ url_for('login') }}" class="login-btn">Login</a>
     </nav>
 
@@ -22,7 +23,7 @@
           </div>
           <h2 class="service-title">Find a Doctor</h2>
           <p class="service-description">Search for qualified healthcare professionals in your area. Book appointments with specialists.</p>
-          <a href="/search_doctor" class="login-btn">Search Doctors</a>
+          <a href="{{ url_for('search_doctor') }}" class="login-btn">Search Doctors</a>
         </div>
 
        
@@ -33,7 +34,7 @@
           </div>
           <h2 class="service-title">Book Appointments</h2>
           <p class="service-description">Schedule medical appointments quickly and easily with our online booking system.</p>
-          <a href="/book_appointment" class="login-btn">Book Now</a>
+          <a href="{{ url_for('book_appointment') }}" class="login-btn">Book Now</a>
         </div>
       </div>
       <div class="gif-container">
@@ -42,17 +43,18 @@
 
 
       </div>
-      <!-- <button class="open-button" onclick="openForm()">Chat</button> -->
+      <button class="open-button" onclick="openForm()" aria-label="Open chat">Chat</button>
 
-    <!-- <div class="chat-popup" id="myForm">
+      <div class="chat-popup" id="myForm">
         <form class="form-container" onsubmit="sendMessage(event)">
-            <i class="fa-solid fa-chalkboard-user"></i> <h3>Chat with us</h3>
-            <div id="messages"></div>
-            <textarea id="message" placeholder="Type message.." required></textarea>
-            <button type="submit" class="btn">Send</button>
-            <button type="button" class="btn cancel" onclick="closeForm()">Close</button>
+          <i class="fa-solid fa-chalkboard-user"></i>
+          <h3>Medical assistant</h3>
+          <div id="messages"></div>
+          <textarea id="message" placeholder="Ask a medical question or type 'patient &lt;name&gt;'..." required></textarea>
+          <button type="submit" class="btn">Send</button>
+          <button type="button" class="btn cancel" onclick="closeForm()">Close</button>
         </form>
-    </div> -->
+      </div>
 
     </main>
 

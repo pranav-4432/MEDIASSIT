@@ -9,13 +9,13 @@
   </head>
   <body>
     <nav>
-      <a href="/">Home</a>
-      <a href="/page2.html" aria-current="page">Book Appointment</a>
+      <a href="{{ url_for('index') }}">Home</a>
+      <a href="{{ url_for('book_appointment') }}" aria-current="page">Book Appointment</a>
     </nav>
     <main>
       <div class="booking-container">
         <h1>Book an Appointment</h1>
-        <form id="appointmentForm1" action="/add_appointment" method="POST"  class="booking-form">
+        <form id="appointmentForm1" action="{{ url_for('add_appointment') }}" method="POST" class="booking-form">
           <div class="form-group">
             <label for="name">Full Name:</label>
             <input type="text" id="name" name="name" required>

@@ -21,9 +21,12 @@
             </div>
         </form>
         <div class="nav-right">
+            <a href="{{ url_for('patient_search_page') }}" class="nav-link">Patient Search</a>
             <a href="{{ url_for('health_pred') }}" class="nav-link">Medical Prediction</a>
+            <a href="{{ url_for('profile') }}" class="nav-link">Profile</a>
+            <a href="{{ url_for('logout') }}" class="nav-link">Logout</a>
             <div class="profile">
-                <img src="https://ui-avatars.com/api/?name=John+Doe" alt="Profile" class="profile-img">
+                <img src="https://ui-avatars.com/api/?name={{ doc_name }}" alt="Profile" class="profile-img">
             </div>
         </div>
     </nav>
@@ -41,7 +44,7 @@
                 </div>
                 <h2>OCR Scanner</h2>
                 <p>Scan and analyze medical documents</p>
-                <a href="/ocr" class="card-btn">Open Scanner</a>
+                <a href="{{ url_for('ocr') }}" class="card-btn">Open Scanner</a>
             </div>
 
             <div class="dashboard-card appointments-card">

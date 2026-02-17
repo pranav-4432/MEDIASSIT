@@ -9,7 +9,7 @@
 </head>
 <body>
     <nav class="navbar">
-        <a href="{{ url_for('index') }}" class="navbar-brand">MedAssist</a> 
+        <a href="{{ url_for('index') }}" class="navbar-brand">MedAssist</a>
     </nav>
 
     <div class="login-container">
@@ -23,48 +23,18 @@
                 {% endif %}
             {% endwith %}
 
-            <!-- Email Form -->
-            <form id="emailForm" action="{{ url_for('login_gen') }}" method="POST">
+            <form action="{{ url_for('login') }}" method="POST">
                 <div class="form-group">
                     <label for="email">Email</label>
-                    <input type="email" id="email" name="email" placeholder="Enter your email" required>
+                    <input type="email" id="email" name="email" placeholder="Enter your email" required autocomplete="email">
                 </div>
-                <button type="submit" class="primary-btn">Send OTP</button>
-            </form>
-
-            <!-- OTP Form (Hidden initially) -->
-            <form id="otpForm" action="{{ url_for('verify_otp_login') }}" method="POST" style="display: none;">
                 <div class="form-group">
-                    <label for="otp">Enter OTP</label>
-                    <input type="text" id="otp" name="otp" placeholder="Enter OTP" maxlength="6" required>
+                    <label for="password">Password</label>
+                    <input type="password" id="password" name="password" placeholder="Enter your password" required autocomplete="current-password">
                 </div>
-                <button type="submit" class="primary-btn">Verify OTP</button>
+                <button type="submit" class="primary-btn">Log in</button>
             </form>
         </div>
     </div>
-
-    <script>
-        document.getElementById('emailForm').onsubmit = function(event) {
-            event.preventDefault();  // Prevent default form submission
-    
-            let email = document.getElementById('email').value;
-    
-            fetch("{{ url_for('login_gen') }}", {
-                method: "POST",
-                body: new URLSearchParams({ email: email }),
-                headers: { "Content-Type": "application/x-www-form-urlencoded" }
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    document.getElementById('otpForm').style.display = 'block';
-                    document.getElementById('emailForm').style.display = 'none';
-                } else {
-                    alert(data.message);  // Show error message
-                }
-            })
-            .catch(error => console.error("Error:", error));
-        };
-    </script>
 </body>
 </html>

@@ -1,97 +1,64 @@
-from flask import Flask, render_template, request, send_file
+"""
+Standalone Flask app for the OCR / models module.
+Uses local templates and static under models/OCR.
+Run from project root: python -m models.OCR.app
+Or from this directory: flask --app app run
+"""
 import os
-import cv2
-from ultralytics import YOLO
-import supervision as sv
-import pyresearch
-import pickle
 
-# Initialize Flask app
-app = Flask(__name__)
+from flask import Flask, render_template, request, redirect
 
-# Load YOLO model
-model = YOLO(r"models\OCR\BrainTumorMRI.pt")
+# Run from repo root or from models/OCR
+BASE = os.path.dirname(os.path.abspath(__file__))
+app = Flask(
+    __name__,
+    template_folder=os.path.join(BASE, "templates"),
+    static_folder=os.path.join(BASE, "static"),
+    static_url_path="/static",
+)
 
-# Set upload folder and allowed extensions
-UPLOAD_FOLDER = 'uploads'
-OUTPUT_FOLDER = 'outputs'
-ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg'}
+@app.route("/")
+def index():
+    return render_template("index.html")
 
-app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
-app.config['OUTPUT_FOLDER'] = OUTPUT_FOLDER
+@app.route("/login", methods=["GET", "POST"])
+def login():
+    if request.method == "POST":
+        return redirect("http://127.0.0.1:5000/login", code=307)
+    return render_template("login.html")
 
-# Function to check allowed file types
-def allowed_file(filename):
-    return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
+@app.route("/appointments")
+def appointments():
+    return render_template("appointments.html")
 
-# Image processing function
-def process_image(input_image_path: str, output_image_path: str):
-    # Read the image
-    image = cv2.imread(input_image_path)
-    if image is None:
-        print("Error: Unable to read the image.")
-        return
+@app.route("/book_appointment")
+def book_appointment():
+    return render_template("book_appointment.html")
 
-    # Resize the image
-    resized = cv2.resize(image, (640, 640))
+@app.route("/dashboard")
+def dashboard():
+    return render_template("dashboard.html", doc_name="Doctor")
 
-    # Perform detection
-    detections = sv.Detections.from_ultralytics(model(resized)[0])
+@app.route("/health_pred")
+def health_pred():
+    return render_template("health_pred.html")
 
-    # Annotate the image
-    annotated = sv.BoundingBoxAnnotator().annotate(scene=resized, detections=detections)
-    annotated = sv.LabelAnnotator().annotate(scene=annotated, detections=detections)
+@app.route("/ocr")
+def ocr():
+    return render_template("ocr.html")
 
-    # Save the annotated image
-    cv2.imwrite(output_image_path, annotated)
-    print(f"Processed and saved: {output_image_path}")
+@app.route("/profile")
+def profile():
+    return render_template("profile.html")
 
-# Route to handle image upload
-@app.route('/', methods=['GET', 'POST'])
-def upload_image():
-    if request.method == 'POST':
-        # Check if the post request has the file part
-        if 'file' not in request.files:
-            return 'No file part'
-        
-        file = request.files['file']
-        
-        # If no file is selected
-        if file.filename == '':
-            return 'No selected file'
-        
-        # If file is allowed
-        if file and allowed_file(file.filename):
-            # Save the uploaded file
-            filename = os.path.join(app.config['UPLOAD_FOLDER'], file.filename)
-            file.save(filename)
+@app.route("/patient_search")
+def patient_search():
+    return render_template("patient_search.html")
 
-            # Define output image path
-            output_filename = os.path.join(app.config['OUTPUT_FOLDER'], 'annotated_' + file.filename)
+@app.route("/search_result")
+def search_result():
+    return render_template("search_result.html", user=[])
 
-            # Process the image
-            process_image(filename, output_filename)
-
-            # Return the processed image
-            return send_file(output_filename, mimetype='image/jpeg')
-    
-    return render_template('ocr.html')
-
-model = YOLO(r"models\OCR\BrainTumorMRI.pt")
-
-with open("pickle/brain_tumor.pkl", "wb") as f:
-    pickle.dump(model, f)
-
-print("YOLO model saved as pickle.")
-
-with open("pickle/brain_tumor.pkl", "rb") as f:
-    loaded_model = pickle.load(f)
-
-print("YOLO model loaded from pickle.")
 
 if __name__ == "__main__":
-    # Create upload and output folders if they don't exist
-    os.makedirs(UPLOAD_FOLDER, exist_ok=True)
-    os.makedirs(OUTPUT_FOLDER, exist_ok=True)
-
-    app.run(debug=True)
+    app.run(debug=True, port=5001)

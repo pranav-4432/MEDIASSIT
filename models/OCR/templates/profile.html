@@ -9,8 +9,9 @@
 <body>
     <nav class="navbar">
         <div class="nav-container">
-            <div class="logo">MedAssist</div>
-            
+            <a href="{{ url_for('index') }}" class="logo">MedAssist</a>
+            <a href="{{ url_for('index') }}" class="nav-link">Home</a>
+            <a href="{{ url_for('book_appointment') }}" class="nav-link">Book Appointment</a>
         </div>
     </nav>
 
