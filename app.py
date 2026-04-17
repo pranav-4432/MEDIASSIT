@@ -17,6 +17,7 @@ import jwt
 import re
 import pickle
 import numpy as np
+from typing import Literal, Optional
 # Optional: medical chatbot (Groq). Set GROQ_API_KEY to enable.
 try:
     from langchain_groq import ChatGroq
@@ -396,6 +397,72 @@ def _is_medical_question(question: str) -> bool:
     return any(kw in q for kw in keywords.split())
 
 
+SmallTalkIntent = Literal["greeting", "farewell", "thanks"]
+
+
+def _squash_repeated_letters(text: str, *, max_repeat: int = 2) -> str:
+    """
+    Reduce consecutive repeated letters to at most `max_repeat`.
+    Example: "hiiii heloooo" -> "hii heloo" (with max_repeat=2).
+    """
+    if max_repeat < 1:
+        max_repeat = 1
+    out: list[str] = []
+    prev: str = ""
+    run_len: int = 0
+    for ch in text:
+        if ch == prev:
+            run_len += 1
+            if run_len <= max_repeat:
+                out.append(ch)
+        else:
+            prev = ch
+            run_len = 1
+            out.append(ch)
+    return "".join(out)
+
+
+def _small_talk_intent(message: str) -> Optional[SmallTalkIntent]:
+    """
+    Detect short, basic small-talk messages.
+    Returns an intent when the message looks like *only* small-talk.
+    """
+    normalized: str = re.sub(r"\s+", " ", (message or "").strip().lower())
+    if not normalized:
+        return None
+
+    # Collapse punctuation for matching (keep spaces).
+    normalized = re.sub(r"[^\w\s']", "", normalized)
+    normalized = _squash_repeated_letters(normalized, max_repeat=2)
+
+    greeting_re: re.Pattern[str] = re.compile(
+        r"^(hi|hii|hey|heyy|hiya|yo|yoo|hello|helloo|helo|heloo|good morning|good afternoon|good evening)"
+        r"( there| everyone| ya| buddy| mate)?$"
+    )
+    farewell_re: re.Pattern[str] = re.compile(
+        r"^(bye|byee|goodbye|see you|see ya|cya|take care|farewell|later)( everyone| soon)?$"
+    )
+    thanks_re: re.Pattern[str] = re.compile(
+        r"^(thanks|thank you|thx|ty|much appreciated|appreciate it)( so much| a lot)?$"
+    )
+
+    if greeting_re.match(normalized):
+        return "greeting"
+    if farewell_re.match(normalized):
+        return "farewell"
+    if thanks_re.match(normalized):
+        return "thanks"
+    return None
+
+
+def _small_talk_response(intent: SmallTalkIntent) -> str:
+    if intent == "greeting":
+        return "Hi! How can I help you today? You can ask a medical question or type `patient <name>` to look up a record."
+    if intent == "farewell":
+        return "Goodbye! If you have any medical questions later, I’m here to help."
+    return "You’re welcome! If you’d like, tell me your symptoms or question and I’ll do my best to help."
+
+
 def _chat_patient_lookup(name: str):  # from MongoDB
     if not name or not name.strip():
         return None
@@ -413,6 +480,12 @@ def api_chat():
     context = data.get('context') or ''
     if not question:
         return jsonify({"answer": "Please enter a question.", "updated_context": context})
+
+    small_talk: Optional[SmallTalkIntent] = _small_talk_intent(question)
+    if small_talk is not None:
+        answer: str = _small_talk_response(small_talk)
+        new_context: str = f"{context}\nUser: {question}\nAssistant: {answer}"
+        return jsonify({"answer": answer, "updated_context": new_context})
 
     # "patient <name>" lookup from MongoDB
     match = re.search(r"patient\s+(.+)", question, re.IGNORECASE)
